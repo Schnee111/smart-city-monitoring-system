@@ -97,30 +97,13 @@ class EnergySimulator:
             return False
     
     def run_simulation(self):
-        """Main simulation loop."""
+        """Main simulation loop - Updated to be fully dynamic."""
         print("\n" + "="*60)
-        print("🏙️  SMART CITY ENERGY SIMULATOR")
+        print("🏙️  SMART CITY ENERGY SIMULATOR (DYNAMIC MODE)")
         print("="*60)
         print(f"📡 API URL: {API_BASE_URL}")
         print(f"⏱️  Interval: {INTERVAL_SECONDS} seconds")
-        print(f"⚡ Voltage Range: {VOLTAGE_MIN}-{VOLTAGE_MAX}V")
-        print(f"🔋 kWh Range: {KWH_MIN}-{KWH_MAX}")
         print("="*60 + "\n")
-        
-        # Fetch sensors first
-        print("🔍 Fetching sensors from backend...")
-        self.fetch_sensors()
-        
-        if not self.sensors:
-            print("\n❌ No sensors found! Please ensure:")
-            print("   1. Spring Boot backend is running")
-            print("   2. Cassandra database is initialized with sample sensors")
-            print("   3. Run the database init.cql script first")
-            return
-        
-        # Filter only active sensors
-        active_sensors = [s for s in self.sensors if s.get('status') == 'Active']
-        print(f"\n📊 Found {len(active_sensors)} active sensors out of {len(self.sensors)} total")
         
         print("\n🚀 Starting simulation... (Press Ctrl+C to stop)\n")
         
@@ -129,29 +112,35 @@ class EnergySimulator:
             iteration += 1
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            print(f"\n[{timestamp}] 📤 Sending batch #{iteration}")
-            print("-" * 40)
+            # --- PERBAIKAN: Refresh daftar sensor setiap 5 iterasi agar tidak berat ---
+            if iteration == 1 or iteration % 5 == 0:
+                print(f"🔍 [{timestamp}] Syncing sensor list from database...")
+                self.fetch_sensors()
             
-            success_count = 0
-            for sensor in active_sensors:
-                reading = self.generate_energy_reading(sensor)
+            # Filter hanya sensor yang berstatus 'Active'
+            active_sensors = [s for s in self.sensors if s.get('status') == 'Active']
+            
+            if not active_sensors:
+                print(f"⚠️ [{timestamp}] No active sensors found. Waiting for sensors...")
+            else:
+                print(f"\n[{timestamp}] 📤 Sending batch #{iteration} for {len(active_sensors)} sensors")
+                print("-" * 40)
                 
-                if self.send_energy_data(reading):
-                    success_count += 1
-                    source_icon = "☀️" if sensor.get('energySource') == 'Solar' else "⚡"
-                    print(f"  {source_icon} {sensor.get('districtName')}: "
-                          f"{reading['kwhUsage']} kWh, {reading['voltage']}V")
+                success_count = 0
+                for sensor in active_sensors:
+                    reading = self.generate_energy_reading(sensor)
+                    if self.send_energy_data(reading):
+                        success_count += 1
+                        source_icon = "☀️" if sensor.get('energySource') == 'Solar' else "⚡"
+                        print(f"  {source_icon} {sensor.get('districtName')}: {reading['kwhUsage']} kWh")
+                
+                print(f"\n✅ Sent {success_count}/{len(active_sensors)} readings successfully")
             
-            print(f"\n✅ Sent {success_count}/{len(active_sensors)} readings successfully")
-            
-            # Wait for next interval
             print(f"💤 Waiting {INTERVAL_SECONDS} seconds...")
             try:
                 time.sleep(INTERVAL_SECONDS)
             except KeyboardInterrupt:
                 break
-        
-        print("\n\n👋 Simulator stopped")
     
     def stop(self):
         """Stop the simulation."""
