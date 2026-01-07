@@ -22,7 +22,7 @@ services:
   # Backend: Spring Boot
   backend-java:
     build:
-      context: ./backend-java
+      context: .
       dockerfile: Dockerfile
     container_name: smart-city-backend
     ports:
