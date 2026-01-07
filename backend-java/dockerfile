@@ -1,0 +1,12 @@
+# Stage 1: Build menggunakan Maven
+FROM maven:3.8.4-openjdk-17-slim AS build
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Stage 2: Runtime
+FROM openjdk:17-slim
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+# Gunakan RAM terbatas agar hemat (512MB)
+ENTRYPOINT ["java", "-Xmx512m", "-jar", "app.jar"]
