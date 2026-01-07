@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # Database: Apache Cassandra
+  cassandra:
+    image: cassandra:latest
+    container_name: smart-city-db
+    ports:
+      - "9042:9042"
+    environment:
+      - MAX_HEAP_SIZE=512M # Membatasi RAM agar server AWS tidak lag
+      - HEAP_NEWSIZE=100M
+    volumes:
+      - ./database/data:/var/lib/cassandra # Persistensi data
+      - ./database/init.cql:/init.cql
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend: Spring Boot
+  backend-java:
+    build:
+      context: ./backend-java
+      dockerfile: Dockerfile
+    container_name: smart-city-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_CASSANDRA_CONTACT_POINTS=cassandra
+      - SPRING_CASSANDRA_LOCAL_DATACENTER=datacenter1
+      - JAVA_OPTS=-Xmx512m # Membatasi RAM Java di VM minimal
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    restart: always
