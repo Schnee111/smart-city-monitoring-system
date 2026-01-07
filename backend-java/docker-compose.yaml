@@ -11,8 +11,8 @@ services:
       - MAX_HEAP_SIZE=512M # Membatasi RAM agar server AWS tidak lag
       - HEAP_NEWSIZE=100M
     volumes:
-      - ./database/data:/var/lib/cassandra # Persistensi data
-      - ./database/init.cql:/init.cql
+      - ../database/data:/var/lib/cassandra # Persistensi data
+      - ../database/init.cql:/init.cql
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
       interval: 10s
