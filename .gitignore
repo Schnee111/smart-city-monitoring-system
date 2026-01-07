@@ -1,0 +1,40 @@
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+.classpath
+.project
+.settings/
+bin/
+
+# --- Node.js / Next.js ---
+node_modules/
+.next/
+out/
+build/
+.env*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- IDE & Extension Specific ---
+.cassandraWorkbench/
+*.log

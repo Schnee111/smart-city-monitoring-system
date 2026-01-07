@@ -1,0 +1,228 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { MapContainer as LeafletMap, TileLayer, useMap, Circle } from 'react-leaflet';
+import useSWR from 'swr';
+import { Layers, RefreshCw, Maximize2, Minus, Plus } from 'lucide-react';
+import { fetcher } from '@/src/lib/fetcher';
+import { useDashboardStore } from '@/src/lib/store';
+import { Sensor } from '@/src/types';
+import SensorMarker from './SensorMarker';
+import MapLegend from './MapLegend';
+import 'leaflet/dist/leaflet.css';
+
+// Jakarta center coordinates
+const JAKARTA_CENTER: [number, number] = [-6.2088, 106.8456];
+const DEFAULT_ZOOM = 11;
+
+// Map styles
+const MAP_STYLES = {
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+};
+
+// Component to handle map flyTo
+function MapController() {
+  const map = useMap();
+  const { selectedSensor } = useDashboardStore();
+
+  useEffect(() => {
+    if (selectedSensor) {
+      map.flyTo(
+        [selectedSensor.latitude, selectedSensor.longitude],
+        15,
+        { duration: 1.5 }
+      );
+    }
+  }, [selectedSensor, map]);
+
+  return null;
+}
+
+// Custom zoom controls
+function CustomControls() {
+  const map = useMap();
+
+  return (
+    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+      <button
+        onClick={() => map.zoomIn()}
+        className="w-9 h-9 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg flex items-center justify-center text-white transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => map.zoomOut()}
+        className="w-9 h-9 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg flex items-center justify-center text-white transition-colors"
+      >
+        <Minus className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => map.setView(JAKARTA_CENTER, DEFAULT_ZOOM)}
+        className="w-9 h-9 bg-slate-800/90 hover:bg-slate-700 border border-slate-600 rounded-lg flex items-center justify-center text-white transition-colors"
+        title="Reset view"
+      >
+        <Maximize2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+interface MapContainerProps {
+  height?: string;
+  showLegend?: boolean;
+  showControls?: boolean;
+}
+
+export default function MapContainer({ 
+  height = '100%', 
+  showLegend = true,
+  showControls = true 
+}: MapContainerProps) {
+  const [isClient, setIsClient] = useState(false);
+  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('dark');
+  const { selectedDistrict } = useDashboardStore();
+
+  // Fetch sensors with polling every 5 seconds
+  const { data: sensors, error, isLoading, mutate } = useSWR<Sensor[]>(
+    '/api/v1/sensors',
+    fetcher,
+    { refreshInterval: 5000 }
+  );
+
+  // Ensure client-side only rendering for Leaflet
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Filter sensors by selected district
+  const filteredSensors = selectedDistrict
+    ? sensors?.filter(s => s.districtName === selectedDistrict)
+    : sensors;
+
+  // Calculate stats
+  const stats = {
+    total: filteredSensors?.length || 0,
+    active: filteredSensors?.filter(s => s.status === 'Active').length || 0,
+    solar: filteredSensors?.filter(s => s.energySource === 'Solar').length || 0,
+    grid: filteredSensors?.filter(s => s.energySource === 'Grid').length || 0,
+  };
+
+  if (!isClient) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-slate-900 rounded-xl">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
+          <span className="text-slate-400 text-sm">Memuat peta...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-slate-900 rounded-xl">
+        <div className="text-center">
+          <div className="text-red-400 mb-2">Error memuat data sensor</div>
+          <button
+            onClick={() => mutate()}
+            className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Coba lagi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full" style={{ height }}>
+      <LeafletMap
+        center={JAKARTA_CENTER}
+        zoom={DEFAULT_ZOOM}
+        className="w-full h-full rounded-xl"
+        style={{ background: '#0f172a' }}
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={MAP_STYLES[mapStyle]}
+        />
+        
+        <MapController />
+        {showControls && <CustomControls />}
+
+        {filteredSensors?.map((sensor) => (
+          <SensorMarker key={sensor.sensorId} sensor={sensor} />
+        ))}
+      </LeafletMap>
+
+      {/* Map Style Switcher */}
+      <div className="absolute top-4 left-4 z-[1000]">
+        <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg p-1 flex gap-1">
+          {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map((style) => (
+            <button
+              key={style}
+              onClick={() => setMapStyle(style)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                mapStyle === style
+                  ? 'bg-emerald-500 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              {style.charAt(0).toUpperCase() + style.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-800/90 backdrop-blur-sm border border-slate-700 px-4 py-2 rounded-lg flex items-center gap-2">
+          <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+          <span className="text-sm text-slate-300">Memperbarui data...</span>
+        </div>
+      )}
+
+      {/* Stats bar at bottom */}
+      <div className="absolute bottom-4 left-4 right-4 z-[1000]">
+        <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+              <span className="text-slate-400">Total:</span>
+              <span className="text-white font-medium">{stats.total}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+              <span className="text-slate-400">Aktif:</span>
+              <span className="text-emerald-400 font-medium">{stats.active}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+              <span className="text-slate-400">Solar:</span>
+              <span className="text-amber-400 font-medium">{stats.solar}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+              <span className="text-slate-400">Grid:</span>
+              <span className="text-blue-400 font-medium">{stats.grid}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => mutate()}
+            className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+            title="Refresh data"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Legend */}
+      {showLegend && <MapLegend />}
+    </div>
+  );
+}

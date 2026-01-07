@@ -1,0 +1,36 @@
+{
+    "districts": [
+        {
+            "name": "Jakarta Pusat",
+            "category": "Commercial",
+            "population": 1200000,
+            "sensors_count": 5
+        },
+        {
+            "name": "Jakarta Selatan",
+            "category": "Residential",
+            "population": 2200000,
+            "sensors_count": 8
+        },
+        {
+            "name": "Jakarta Utara",
+            "category": "Industrial",
+            "population": 1800000,
+            "sensors_count": 6
+        },
+        {
+            "name": "Jakarta Barat",
+            "category": "Residential",
+            "population": 2500000,
+            "sensors_count": 7
+        },
+        {
+            "name": "Jakarta Timur",
+            "category": "Industrial",
+            "population": 2900000,
+            "sensors_count": 8
+        }
+    ],
+    "energy_sources": ["Solar", "Grid"],
+    "statuses": ["Active", "Active", "Active", "Maintenance", "Offline"]
+}
