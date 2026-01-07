@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Map, ArrowRight, Activity } from 'lucide-react';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
 import StatsCards from '@/src/components/ui/StatsCards';
-import EnergyTrendChart from '@/src/components/ui/EnergyTrendChart';
+import HistoricalEnergyChart from '@/src/components/ui/HistoricalEnergyChart';
 import WeatherWidget from '@/src/components/ui/WeatherWidget';
 
 // Dynamic import for Leaflet (no SSR)
@@ -72,7 +72,7 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="p-4">
-          <EnergyTrendChart />
+          <HistoricalEnergyChart showModeToggle={false} />
         </div>
       </div>
     </DashboardLayout>

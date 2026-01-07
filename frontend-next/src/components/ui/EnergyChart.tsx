@@ -23,7 +23,7 @@ export default function EnergyChart() {
   // Fetch energy history with polling
   const { data: readings } = useSWR<EnergyReading[]>(
     selectedSensor 
-      ? `/api/v1/energy/history/${selectedSensor.sensorId}`
+      ? `/energy/history/${selectedSensor.sensorId}`
       : null,
     fetcher,
     { refreshInterval: 5000 }

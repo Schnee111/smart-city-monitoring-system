@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import useSWR from 'swr';
 import DashboardLayout from '@/src/components/layout/DashboardLayout';
-import TotalEnergyChart from '@/src/components/ui/TotalEnergyChart';
+import HistoricalEnergyChart from '@/src/components/ui/HistoricalEnergyChart';
 import EnergyChart from '@/src/components/ui/EnergyChart';
 import { fetcher } from '@/src/lib/fetcher';
 import { Select } from '@/src/components/ui/Select';
@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
           
           <div className="p-4">
             {viewMode === 'total' ? (
-              <TotalEnergyChart />
+              <HistoricalEnergyChart showModeToggle={true} height={320} />
             ) : (
               <div>
                 {selectedSensorId ? (
