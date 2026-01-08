@@ -12,7 +12,54 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import dayjs, { Dayjs } from 'dayjs';
+import 'dayjs/locale/id';
 import { fetcher } from '@/src/lib/fetcher';
+
+// MUI Dark Theme for DatePicker
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#10b981', // emerald-500
+    },
+    background: {
+      paper: '#1e293b', // slate-800
+      default: '#0f172a', // slate-900
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#94a3b8', // slate-400
+    },
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          backgroundColor: '#1e293b',
+          border: '1px solid #334155',
+        },
+      },
+    },
+    MuiInputBase: {
+      styleOverrides: {
+        root: {
+          '&:before': {
+            borderBottom: '1px solid #475569',
+          },
+          '&:hover:not(.Mui-disabled):before': {
+            borderBottom: '2px solid #64748b',
+          },
+        },
+      },
+    },
+  },
+});
 
 interface Sensor {
   sensorId: string;
@@ -56,6 +103,8 @@ export default function HistoricalEnergyChart({
   const [viewMode, setViewMode] = useState<ViewMode>('live');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [realtimeHistory, setRealtimeHistory] = useState<ChartDataPoint[]>([]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
   // Format date for API
   const dateStr = selectedDate.toISOString().split('T')[0];
@@ -146,6 +195,13 @@ export default function HistoricalEnergyChart({
 
   const goToToday = () => {
     setSelectedDate(new Date());
+  };
+
+  const handleDateChange = (newValue: Dayjs | null) => {
+    if (newValue) {
+      setSelectedDate(newValue.toDate());
+      setShowDatePicker(false);
+    }
   };
 
   // Current stats
@@ -269,11 +325,85 @@ export default function HistoricalEnergyChart({
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/30 rounded-lg">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-white">
-                  {isToday ? 'Hari Ini' : formatDisplayDate(selectedDate)}
-                </span>
+              <div className="relative">
+                <button
+                  ref={(el) => {
+                    if (el && !anchorEl) setAnchorEl(el);
+                  }}
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-white">
+                    {isToday ? 'Hari Ini' : formatDisplayDate(selectedDate)}
+                  </span>
+                </button>
+                <ThemeProvider theme={darkTheme}>
+                  <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="id">
+                    <DatePicker
+                      value={dayjs(selectedDate)}
+                      onChange={handleDateChange}
+                      maxDate={dayjs()}
+                      open={showDatePicker}
+                      onClose={() => setShowDatePicker(false)}
+                      format="DD/MM/YYYY"
+                      slotProps={{
+                        textField: {
+                          sx: { display: 'none' },
+                        },
+                        popper: {
+                          anchorEl: anchorEl,
+                          placement: 'bottom-end',
+                          sx: {
+                            '& .MuiPaper-root': {
+                              backgroundColor: '#1e293b',
+                              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                              border: '1px solid #334155',
+                              borderRadius: '12px',
+                              marginTop: '8px',
+                            },
+                            '& .MuiPickersDay-root': {
+                              color: '#ffffff',
+                              '&:hover': {
+                                backgroundColor: '#334155',
+                              },
+                              '&.Mui-selected': {
+                                backgroundColor: '#10b981 !important',
+                                '&:hover': {
+                                  backgroundColor: '#059669 !important',
+                                },
+                              },
+                            },
+                            '& .MuiPickersCalendarHeader-root': {
+                              color: '#ffffff',
+                            },
+                            '& .MuiDayCalendar-weekDayLabel': {
+                              color: '#94a3b8',
+                            },
+                            '& .MuiPickersYear-yearButton': {
+                              color: '#ffffff',
+                              '&:hover': {
+                                backgroundColor: '#334155',
+                              },
+                              '&.Mui-selected': {
+                                backgroundColor: '#10b981 !important',
+                                '&:hover': {
+                                  backgroundColor: '#059669 !important',
+                                },
+                              },
+                            },
+                            '& .MuiIconButton-root': {
+                              color: '#94a3b8',
+                              '&:hover': {
+                                backgroundColor: '#334155',
+                              },
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
+                </ThemeProvider>
               </div>
               <button
                 onClick={goToNextDay}
