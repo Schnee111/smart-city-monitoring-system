@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import time
+import pytz
 import random
 import requests
 from datetime import datetime
@@ -55,7 +56,10 @@ class EnergySimulator:
         # Adjust kWh based on energy source
         if sensor.get('energySource') == 'Solar':
             # Solar produces less at night (simulate time-based generation)
-            hour = datetime.now().hour
+            tz_jakarta = pytz.timezone('Asia/Jakarta')
+            jakarta_time = datetime.now(tz_jakarta)
+            hour = jakarta_time.hour
+            
             if 6 <= hour <= 18:  # Daytime
                 kwh = random.uniform(KWH_MIN * 2, KWH_MAX)
             else:  # Night
