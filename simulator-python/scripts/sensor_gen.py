@@ -8,9 +8,9 @@ import os
 import sys
 import json
 import time
-import pytz
 import random
 import requests
+from zoneinfo import ZoneInfo
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
@@ -56,8 +56,7 @@ class EnergySimulator:
         # Adjust kWh based on energy source
         if sensor.get('energySource') == 'Solar':
             # Solar produces less at night (simulate time-based generation)
-            tz_jakarta = pytz.timezone('Asia/Jakarta')
-            jakarta_time = datetime.now(timezone.utc).astimezone(tz_jakarta)
+            jakarta_time = datetime.now(ZoneInfo("Asia/Jakarta"))
             hour = jakarta_time.hour
             
             if 6 <= hour <= 18:  # Daytime
