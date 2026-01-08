@@ -89,7 +89,7 @@ interface ChartDataPoint {
   gridKwh: number;
 }
 
-type ViewMode = 'live' | 'today' | 'history';
+type ViewMode = 'live' | 'history';
 
 interface HistoricalEnergyChartProps {
   showModeToggle?: boolean;
@@ -110,9 +110,9 @@ export default function HistoricalEnergyChart({
   const dateStr = selectedDate.toISOString().split('T')[0];
   const isToday = dateStr === new Date().toISOString().split('T')[0];
 
-  // Fetch hourly data from backend for today/history view
+  // Fetch hourly data from backend for history view
   const { data: hourlyData, isLoading: hourlyLoading, mutate: refetchHourly } = useSWR<HourlyData[]>(
-    (viewMode === 'today' || viewMode === 'history') ? `/stats/hourly?date=${dateStr}` : null,
+    viewMode === 'history' ? `/stats/hourly?date=${dateStr}` : null,
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -170,9 +170,9 @@ export default function HistoricalEnergyChart({
     });
   }, [sensors, viewMode]);
 
-  // Reset date when switching to today mode
+  // Reset date when switching to history mode
   useEffect(() => {
-    if (viewMode === 'today') {
+    if (viewMode === 'history') {
       setSelectedDate(new Date());
     }
   }, [viewMode]);
@@ -206,7 +206,7 @@ export default function HistoricalEnergyChart({
 
   // Current stats
   const currentStats = useMemo(() => {
-    if ((viewMode === 'today' || viewMode === 'history') && hourlyData && hourlyData.length > 0) {
+    if (viewMode === 'history' && hourlyData && hourlyData.length > 0) {
       const totalKwh = hourlyData.reduce((acc, h) => acc + h.totalKwh, 0);
       const solarKwh = hourlyData.reduce((acc, h) => acc + h.solarKwh, 0);
       const gridKwh = hourlyData.reduce((acc, h) => acc + h.gridKwh, 0);
@@ -237,12 +237,12 @@ export default function HistoricalEnergyChart({
 
   // Chart data based on mode
   const chartData = useMemo(() => {
-    if ((viewMode === 'today' || viewMode === 'history') && hourlyData && hourlyData.length > 0) {
+    if (viewMode === 'history' && hourlyData && hourlyData.length > 0) {
       // Show all hours up to current hour for today, or all hours with data for history
       const currentHour = new Date().getHours();
       return hourlyData
         .filter(h => {
-          if (viewMode === 'today' && isToday) {
+          if (isToday) {
             return h.hour <= currentHour;
           }
           return h.readingCount > 0;
@@ -293,16 +293,6 @@ export default function HistoricalEnergyChart({
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               Live
-            </button>
-            <button
-              onClick={() => setViewMode('today')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all ${
-                viewMode === 'today' 
-                  ? 'bg-emerald-500/20 text-emerald-400' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Hari Ini
             </button>
             <button
               onClick={() => setViewMode('history')}
@@ -424,20 +414,6 @@ export default function HistoricalEnergyChart({
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-          ) : viewMode === 'today' ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/30 rounded-lg">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-white">Hari Ini</span>
-              </div>
-              <button
-                onClick={() => refetchHourly()}
-                className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-                title="Refresh data"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            </div>
           ) : null}
         </div>
       )}
@@ -445,7 +421,7 @@ export default function HistoricalEnergyChart({
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-slate-700/30 rounded-lg p-3">
-          <p className="text-xs text-slate-400">{viewMode === 'live' ? 'Total Saat Ini' : 'Total Hari Ini'}</p>
+          <p className="text-xs text-slate-400">{viewMode === 'live' ? 'Total Saat Ini' : 'Total'}</p>
           <p className="text-lg font-bold text-white">
             {formatKwh(currentStats.totalKwh)} <span className="text-xs font-normal text-slate-400">kWh</span>
           </p>

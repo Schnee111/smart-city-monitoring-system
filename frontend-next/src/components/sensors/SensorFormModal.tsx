@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Sun, Zap } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { MapPin, Sun, Zap, Map } from 'lucide-react';
 import { Modal } from '@/src/components/ui/Modal';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
@@ -9,6 +10,19 @@ import { Select } from '@/src/components/ui/Select';
 import { fetchWithBody } from '@/src/lib/fetcher';
 import { Sensor, CreateSensorRequest } from '@/src/types';
 import { useToast } from '@/src/components/ui/Toast';
+
+// Dynamic import MapPicker to avoid SSR issues with Leaflet
+const MapPicker = dynamic(
+  () => import('./MapPicker').then((mod) => mod.MapPicker),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[300px] bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700">
+        <p className="text-slate-400">Loading map...</p>
+      </div>
+    )
+  }
+);
 
 interface SensorFormModalProps {
   isOpen: boolean;
@@ -38,6 +52,7 @@ const STATUS_OPTIONS = [
 
 export function SensorFormModal({ isOpen, onClose, onSuccess, sensor }: SensorFormModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [formData, setFormData] = useState({
     districtName: 'Jakarta Pusat',
     latitude: '-6.1751',
@@ -69,7 +84,16 @@ export function SensorFormModal({ isOpen, onClose, onSuccess, sensor }: SensorFo
       });
     }
     setErrors({});
+    setShowMap(false);
   }, [sensor, isOpen]);
+
+  const handleLocationChange = (lat: number, lng: number) => {
+    setFormData({
+      ...formData,
+      latitude: lat.toFixed(6),
+      longitude: lng.toFixed(6),
+    });
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -128,13 +152,37 @@ export function SensorFormModal({ isOpen, onClose, onSuccess, sensor }: SensorFo
       description={isEditMode ? 'Update sensor information' : 'Register a new energy sensor'}
       size="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Select
-          label="District"
-          value={formData.districtName}
-          onChange={(e) => setFormData({ ...formData, districtName: e.target.value })}
-          options={DISTRICTS}
-        />
+      <form onSubmit={handleSubmit} className="flex flex-col max-h-[70vh]">
+        <div className="space-y-4 overflow-y-auto overflow-x-visible pr-2 -mr-2 pb-40">
+          <Select
+            label="District"
+            value={formData.districtName}
+            onChange={(e) => setFormData({ ...formData, districtName: e.target.value })}
+            options={DISTRICTS}
+          />
+
+        {/* Map Picker Toggle */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-300">Location</label>
+            <button
+              type="button"
+              onClick={() => setShowMap(!showMap)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white text-xs transition-all"
+            >
+              <Map className="w-3.5 h-3.5" />
+              {showMap ? 'Hide Map' : 'Pick from Map'}
+            </button>
+          </div>
+
+          {showMap && (
+            <MapPicker
+              latitude={parseFloat(formData.latitude) || -6.1751}
+              longitude={parseFloat(formData.longitude) || 106.8650}
+              onLocationChange={handleLocationChange}
+            />
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -192,8 +240,9 @@ export function SensorFormModal({ isOpen, onClose, onSuccess, sensor }: SensorFo
           onChange={(e) => setFormData({ ...formData, status: e.target.value })}
           options={STATUS_OPTIONS}
         />
+        </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+        <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-slate-700 flex-shrink-0">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
