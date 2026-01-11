@@ -299,44 +299,52 @@ export default function AnalyticsPage() {
               {/* SVG Donut Chart */}
               <div className="relative w-32 h-32">
                 <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                  {/* Background circle (Grid) */}
+                  
+                  {/* Grid (Blue 400) */}
                   <circle
                     cx="18"
                     cy="18"
                     r="15.915"
                     fill="transparent"
-                    stroke="#475569"
+                    stroke="#818cf8"
                     strokeWidth="3"
+                    strokeDasharray="100 0"
                   />
-                  {/* Solar percentage arc */}
+
+                  {/* Solar (Amber) */}
                   <circle
                     cx="18"
                     cy="18"
                     r="15.915"
                     fill="transparent"
-                    stroke="#f59e0b"
+                    stroke="#f59e0b" // amber-500
                     strokeWidth="3"
                     strokeDasharray={`${avgSolarPercentage} ${100 - avgSolarPercentage}`}
                     strokeLinecap="round"
                     className="transition-all duration-700"
                   />
                 </svg>
+
+                {/* Center Label */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-white">{avgSolarPercentage.toFixed(0)}%</p>
+                    <p className="text-2xl font-bold text-white">
+                      {avgSolarPercentage.toFixed(0)}%
+                    </p>
                     <p className="text-xs text-slate-400">Solar</p>
                   </div>
                 </div>
               </div>
-              
+
+              {/* Legend */}
               <div className="flex items-center gap-4 mt-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-amber-500"></div>
                   <span className="text-xs text-slate-300">Solar</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-slate-600"></div>
-                  <span className="text-xs text-slate-300">Grid</span>
+                  <div className="w-3 h-3 rounded-full bg-indigo-400"></div>
+                  <span className="text-xs text-indigo-400">Grid</span>
                 </div>
               </div>
             </div>
