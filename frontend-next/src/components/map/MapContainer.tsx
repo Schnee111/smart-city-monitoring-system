@@ -12,6 +12,7 @@ import SensorMarker from './SensorMarker';
 import MapLegend from './MapLegend';
 import 'leaflet/dist/leaflet.css';
 
+
 // Jakarta center coordinates
 const JAKARTA_CENTER: [number, number] = [-6.2088, 106.8456];
 const DEFAULT_ZOOM = 11;
@@ -38,22 +39,22 @@ function MapController() {
   const map = useMap();
   const { selectedSensor, selectedDistrict } = useDashboardStore();
 
-  // Handle sensor selection - zoom to specific sensor
+  // Handle sensor selection - zoom to specific sensor, or restore default when deselected
   useEffect(() => {
     if (selectedSensor) {
-      // Calculate offset to position marker in lower portion of viewport
-      // This ensures any popup/tooltip doesn't get cut off at the top
       const mapSize = map.getSize();
       const targetPoint = map.project([selectedSensor.latitude, selectedSensor.longitude], 14);
       const offsetPoint = L.point(targetPoint.x, targetPoint.y - mapSize.y * 0.15);
       const targetLatLng = map.unproject(offsetPoint, 14);
-      
-      map.flyTo(targetLatLng, 14, { 
-        duration: 0.8,
-        easeLinearity: 0.5
-      });
+      map.flyTo(targetLatLng, 14, { duration: 0.8, easeLinearity: 0.5 });
+      return;
     }
-  }, [selectedSensor, map]);
+
+    // If no sensor selected and also no district selected, restore to Jakarta default view
+    if (!selectedDistrict) {
+      map.flyTo(JAKARTA_CENTER, DEFAULT_ZOOM, { duration: 0.8, easeLinearity: 0.5 });
+    }
+  }, [selectedSensor, selectedDistrict, map]);
 
   // Handle district selection - zoom to district area
   useEffect(() => {
@@ -119,6 +120,9 @@ export default function MapContainer({
 }: MapContainerProps) {
   const [isClient, setIsClient] = useState(false);
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('dark');
+  const [activeFilter, setActiveFilter] = useState<'all'|'active'|'inactive'|'solar'|'grid'>('all');
+  const [focusedSensorId, setFocusedSensorId] = useState<string | null>(null);
+  const dashboardStore = useDashboardStore();
   const { selectedDistrict } = useDashboardStore();
 
   // Fetch sensors with polling every 5 seconds
@@ -138,10 +142,24 @@ export default function MapContainer({
     ? sensors?.filter(s => s.districtName === selectedDistrict)
     : sensors;
 
+  // Sensors to display according to selected stats filter OR focused single sensor
+  const displayedSensors = (filteredSensors || []).filter(s => {
+      if (focusedSensorId) return s.sensorId === focusedSensorId;
+      switch (activeFilter) {
+        case 'active': return (s.status || '').toLowerCase() === 'active';
+        case 'inactive': return (s.status || '').toLowerCase() !== 'active';
+        case 'solar': return s.energySource === 'Solar';
+        case 'grid': return s.energySource === 'Grid';
+        case 'all':
+        default: return true;
+      }
+  });
+
   // Calculate stats
   const stats = {
     total: filteredSensors?.length || 0,
     active: filteredSensors?.filter(s => s.status === 'Active').length || 0,
+    inactive: filteredSensors?.filter(s => s.status !== 'Active').length || 0,
     solar: filteredSensors?.filter(s => s.energySource === 'Solar').length || 0,
     grid: filteredSensors?.filter(s => s.energySource === 'Grid').length || 0,
   };
@@ -191,8 +209,14 @@ export default function MapContainer({
         <MapController />
         {showControls && <CustomControls />}
 
-        {filteredSensors?.map((sensor) => (
-          <SensorMarker key={sensor.sensorId} sensor={sensor} />
+        {displayedSensors?.map((sensor) => (
+          <SensorMarker
+            key={sensor.sensorId}
+            sensor={sensor}
+            onClick={() => {
+              setFocusedSensorId(prev => prev === sensor.sensorId ? null : sensor.sensorId);
+            }}
+          />
         ))}
       </LeafletMap>
 
@@ -227,27 +251,56 @@ export default function MapContainer({
       <div className="absolute bottom-4 left-4 right-4 z-[1000]">
         <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`flex items-center gap-1 px-2 py-1 rounded ${activeFilter === 'all' ? 'bg-slate-700/60' : 'hover:bg-slate-700'}`}
+              title="Tampilkan semua"
+            >
               <div className="w-2 h-2 rounded-full bg-slate-400"></div>
               <span className="text-slate-400">Total:</span>
               <span className="text-white font-medium">{stats.total}</span>
-            </div>
-            <div className="flex items-center gap-2">
+            </button>
+
+            <button
+              onClick={() => setActiveFilter(prev => prev === 'active' ? 'all' : 'active')}
+              className={`flex items-center gap-1 px-2 py-1 rounded ${activeFilter === 'active' ? 'bg-emerald-700/40' : 'hover:bg-slate-700'}`}
+              title="Tampilkan sensor aktif"
+            >
               <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
               <span className="text-slate-400">Aktif:</span>
               <span className="text-emerald-400 font-medium">{stats.active}</span>
-            </div>
-            <div className="flex items-center gap-2">
+            </button>
+
+            <button
+              onClick={() => setActiveFilter(prev => prev === 'inactive' ? 'all' : 'inactive')}
+              className={`flex items-center gap-1 px-2 py-1 rounded ${activeFilter === 'inactive' ? 'bg-red-700/30' : 'hover:bg-slate-700'}`}
+              title="Tampilkan sensor tidak aktif"
+            >
+              <div className="w-2 h-2 rounded-full bg-red-400"></div>
+              <span className="text-slate-400">Nonaktif:</span>
+              <span className="text-red-400 font-medium">{stats.inactive}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveFilter(prev => prev === 'solar' ? 'all' : 'solar')}
+              className={`flex items-center gap-1 px-2 py-1 rounded ${activeFilter === 'solar' ? 'bg-amber-700/30' : 'hover:bg-slate-700'}`}
+              title="Tampilkan sensor solar"
+            >
               <div className="w-2 h-2 rounded-full bg-amber-400"></div>
               <span className="text-slate-400">Solar:</span>
               <span className="text-amber-400 font-medium">{stats.solar}</span>
-            </div>
-            <div className="flex items-center gap-2">
+            </button>
+
+            <button
+              onClick={() => setActiveFilter(prev => prev === 'grid' ? 'all' : 'grid')}
+              className={`flex items-center gap-1 px-2 py-1 rounded ${activeFilter === 'grid' ? 'bg-blue-700/30' : 'hover:bg-slate-700'}`}
+              title="Tampilkan sensor grid"
+            >
               <div className="w-2 h-2 rounded-full bg-blue-400"></div>
               <span className="text-slate-400">Grid:</span>
               <span className="text-blue-400 font-medium">{stats.grid}</span>
-            </div>
-          </div>
+            </button>
+        </div>
           <button
             onClick={() => mutate()}
             className="text-slate-400 hover:text-white p-1 rounded transition-colors"
