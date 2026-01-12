@@ -7,6 +7,7 @@ import DashboardLayout from '@/src/components/layout/DashboardLayout';
 import StatsCards from '@/src/components/ui/StatsCards';
 import HistoricalEnergyChart from '@/src/components/ui/HistoricalEnergyChart';
 import WeatherWidget from '@/src/components/ui/WeatherWidget';
+import SolarSavingsCard from '@/src/components/ui/SolarSavingsCard';
 
 // Dynamic import for Leaflet (no SSR)
 const MapContainer = dynamic(() => import('@/src/components/map/MapContainer'), {
@@ -27,6 +28,11 @@ export default function DashboardPage() {
       title="Smart City Energy Monitoring" 
       subtitle="Monitoring konsumsi energi real-time seluruh kota"
     >
+      {/* SOLAR SAVINGS */}
+      <div className="mb-4">
+        <SolarSavingsCard />
+      </div>
+
       {/* Stats Cards Row */}
       <StatsCards />
 
